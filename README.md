@@ -1,4 +1,3 @@
-CourseraPMLCourseProject
-========================
+#### Coursera PML Course Project Write-Up
 
-Course Project submission for Coursera Practical Machine Learning
+This repo contains the Course Project Write-up submission for Coursera Practical Machine Learning course.
