@@ -1,4 +1,4 @@
-## Predicting Weight Lifting Exercise Quality
+### Predicting Weight Lifting Exercise Quality
 
 ```{r set-options, echo=FALSE, cache=TRUE}
 options(width=100)
@@ -12,7 +12,7 @@ library(plyr, quietly=TRUE)
 library(corrgram, quietly=TRUE)
 ```
 
-### Synopsis
+#### Synopsis
 
 Physical exercise (weight-lifting) data from the Human Activity Recognition 
 Project was used to develop a predictive model capable of producing accurate
@@ -30,9 +30,9 @@ out data set.
 forest and gradient boost models produced the same predictions when run
 against a 20 sample set of data for which the target class was not known.
 
-### Data Processing
+#### Data Processing
 
-#### Download and Read the Data
+##### Download and Read the Data
 
 The data used in this analysis is drawn from the Weight Lifting Exercises 
 Dataset from the [Human Activity Recognition Project](http://groupware.les.inf.puc-rio.br/har). 
@@ -57,7 +57,7 @@ dim(raw.data); dim(raw.test);
 The training data was downloaded on **`r dateTrainingDownloaded`** and the 
 test data was downloaded on **`r dateTestDownloaded`**.
 
-#### Exploratory Data Analysis and Cleaning the Data
+##### Exploratory Data Analysis and Cleaning the Data
 
 A review of the training data shows seven (7) non-sensor variables (e.g. 
 *user_name*, various timestamps), 152 sensor variables and the "target" 
@@ -76,7 +76,7 @@ from the training set.
 The following R code: 
 
 1. Removes the non-sensor variables (likely confounders)
-2. Remove sensor variables with very little data (>95% NA)
+2. Removes sensor variables with very little data (>95% NA)
 
 ```{r preprocess}
 data <- raw.data[, -c(1:7)]
@@ -85,7 +85,7 @@ high.na.variables <- names(na.density[na.density > 0.95])
 qar <- data[ , -which(names(data) %in% high.na.variables)]
 ````
 
-### Cross Validation
+#### Cross Validation
 
 In order to perform cross-validation within the training data set provided, and
 to validate/confirm the out-of-sample error for the predictive model, the training
@@ -101,14 +101,14 @@ testing <- qar[-inTrain, ]
 dim(training); dim(testing)
 ````
 
-### Building the Predictive Model
+#### Building the Predictive Model
 
 Based on the success of boosting, random forests and model ensembling in 
 winning Kaggle and other prediction contests ([2][2]), a random forest
 and a gradient boost model were built/trained and their accuracy against
 the hold out (testing) data set was evaluated to assess their performance.
 
-#### Random Forest
+##### Random Forest
 
 The initial random forest model is built using all of the "useful" sensor 
 variables, as determined by exploratory data analysis (see above). Note that 
@@ -128,8 +128,12 @@ plot(rf.fit, main="Figure 1 - In Sample Error Rate as Forest Grows (All Variable
 varImpPlot(rf.fit, main="Figure 2 - Variable Importance as Determined by Random Forest")
 ```
 
-Some comment about only using the most important (e.g. top 18) variables
-and the effect on the model accuracy.
+Figure 2 provides information on the relative importance of the various sensor 
+variables with respect to their predictive performace. We reduce the number of 
+variables to the most important ones, based on the location of the "elbow" in 
+the Gini importance curve in Figure 2, and rebuild/train the random forest model.
+We will subsequently review the effect of using the smaller set of predictors 
+(which may help avoid overfitting) on model accuracy (see below).
 
 ```{r rf_imp, cache=TRUE}
 imp <- data.frame(importance(rf.fit))
@@ -141,7 +145,7 @@ rf.imp.fit <- randomForest(classe ~ ., data=train2)
 ```
 
 ```{r rf_imp_fit_plot, fig.width=9, echo=FALSE}
-plot(rf.fit, main="In Sample Error Rate as Forest Grows (Most Important Variables)")
+plot(rf.fit, main="Figure 3 - In Sample Error Rate as Forest Grows (Most Important Variables)")
 ```
 ```
 
@@ -151,9 +155,21 @@ rf.imp.ise <- confusionMatrix(train2$classe, predict(rf.imp.fit, train2[,-19]))
 rf.ise$overall[1]; rf.imp.ise$overall[1]
 ````
 
-#### Gradient Boosting
+Thus, we see that both random forest models (one using all of the sensor variables
+and one using only the most important sensor variables), achieve the same (zero) 
+in-sample error. Their performance with respect to out-of-sample error, which we
+expect to be higher (i.e. reduced accuracy), is evaluated below.
 
-Try a boosting model to see if we get the same answers.
+##### Gradient Boosting
+
+Boosting is also a predictive modelling approach that is known to perform well,
+in general, so a boosting model (gbm) is built/trained to provide a second model
+that can be:
+
+1. Compared to the random forest model developed above with respect to 
+predictive accuracy against the hold out data set, and
+2. Used in an "ad-hoc" ensembling technique that compares its predictions on 
+the 20 sample testing set with the predictions of the random forest model.
 
 ```{r gbm_build, cache=TRUE, message=FALSE}
 set.seed(88388)
@@ -161,15 +177,15 @@ gbm.fit <- train(classe ~ ., method="gbm", data=training, verbose=FALSE)
 ```
 
 ```{r gbm_plot, fig.width=9, echo=FALSE}
-plot(gbm.fit, main="Accuracy vs Max Tree Depth as Boosting Iterations Increase")
+plot(gbm.fit, main="Figure 4 - Accuracy vs Max Tree Depth as Boosting Iterations Increase")
 ```
 ```{r gbm_eval}
 gbm.ise <- confusionMatrix(training$classe, predict(gbm.fit, training[,-53]))
 gbm.ise$table; gbm.ise$overall[1]
 ````
 
-The Gradient Boost model has a lower in-sample accuracy than the Random Forest model
-(`r round(gbm.ise$overall[1]*100,2) `% vs `r round(rf.ise$overall[1]*100,2) `%)
+Note that the Gradient Boost model has a lower in-sample accuracy than the 
+random forest models (`r round(gbm.ise$overall[1]*100,2) `% vs `r round(rf.ise$overall[1]*100,2) `%)
 
 #### Determining Model Performance (Out-of-Sample Error)
 
